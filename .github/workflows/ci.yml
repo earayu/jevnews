@@ -19,6 +19,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      - run: node --test test/deployment.test.mjs
       - run: npm run test:db
       - run: npm run build
       - run: npm run test:runtime
