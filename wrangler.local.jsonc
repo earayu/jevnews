@@ -1,0 +1,16 @@
+{
+  "name":"jevnews-local",
+  "main":"src/index.ts",
+  "compatibility_date":"2026-09-01",
+  "compatibility_flags":["nodejs_compat"],
+  "workers_dev":true,
+  "assets":{"directory":"./public","binding":"ASSETS"},
+  "observability":{"enabled":true,"head_sampling_rate":0.1},
+  "d1_databases":[{"binding":"DB","database_name":"jevnews","database_id":"00000000-0000-0000-0000-000000000000","migrations_dir":"migrations"}],
+  "r2_buckets":[{"binding":"CONTENT","bucket_name":"jevnews-content"}],
+  "queues":{"producers":[{"binding":"TASKS","queue":"jevnews-tasks"}],"consumers":[{"queue":"jevnews-tasks","max_batch_size":5,"max_batch_timeout":5,"max_retries":3,"max_concurrency":2,"dead_letter_queue":"jevnews-dlq"}]},
+  "durable_objects":{"bindings":[{"name":"SYNC","class_name":"SyncCoordinator"}]},
+  "migrations":[{"tag":"v1","new_sqlite_classes":["SyncCoordinator"]}],
+  "triggers":{"crons":["*/5 * * * *","17 3 * * *"]},
+  "vars":{"APP_ENV":"development","SYNC_INTERVAL_MS":"60000","SYNC_ENABLED":"false","ANALYSIS_ENABLED":"false","RULE_COMPILATION_ENABLED":"false","REGISTRATION_OPEN":"true","JEV_MODEL":"jev-1.13.0","RULE_MODEL":"@cf/meta/llama-3.1-8b-instruct","DAILY_TOKEN_BUDGET":"20000000","DAILY_COMPILE_BUDGET":"100","TURNSTILE_SITE_KEY":"","TURNSTILE_HOSTNAME":"","MAX_SCAN_IDS":"100","MAX_CANDIDATES":"10000","ADMIN_TOKEN":"local-test-token-32-characters-or-more"}
+}

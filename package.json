@@ -5,19 +5,17 @@
   "type": "module",
   "engines": { "node": ">=22.16.0" },
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --config wrangler.local.jsonc",
     "typecheck": "wrangler types && tsc --noEmit",
     "test": "node --experimental-strip-types --test test/*.test.ts",
     "test:db": "python3 test/schema_test.py",
+    "test:runtime": "node scripts/runtime-smoke.mjs",
     "build": "wrangler deploy --dry-run --outdir dist",
-    "db:local": "wrangler d1 migrations apply jevnews --local",
+    "db:local": "wrangler d1 migrations apply jevnews --local --config wrangler.local.jsonc",
     "db:remote": "wrangler d1 migrations apply jevnews --remote",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "preview": "node --experimental-strip-types scripts/preview.ts"
   },
   "dependencies": { "hono": "4.13.8" },
-  "devDependencies": {
-    "@types/node": "22.15.30",
-    "typescript": "5.9.3",
-    "wrangler": "4.135.0"
-  }
+  "devDependencies": { "@types/node": "22.15.30", "typescript": "5.9.3", "wrangler": "4.135.0" }
 }

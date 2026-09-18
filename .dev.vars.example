@@ -1,0 +1,8 @@
+# Copy to .dev.vars for local development only. Never commit real credentials.
+APP_ENV=development
+SYNC_ENABLED=false
+ANALYSIS_ENABLED=false
+RULE_COMPILATION_ENABLED=false
+TYPESAFE_API_KEY=
+TURNSTILE_SECRET_KEY=
+ADMIN_TOKEN=replace-with-a-random-secret-at-least-32-characters

@@ -15,16 +15,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: if [ -f package-lock.json ]; then npm ci; else npm install; fi
-      - name: Check implementation
-        if: ${{ hashFiles('src/index.ts') != '' }}
-        run: npm run typecheck && npm test && npm run test:db && npm run build
-      - name: Export dependency lock and toolchain for reproducible local validation
-        if: ${{ github.ref == 'refs/heads/feat/cloudflare-mvp' }}
-        run: tar -czf /tmp/toolchain.tgz node_modules package-lock.json
-      - uses: actions/upload-artifact@v4
-        if: ${{ github.ref == 'refs/heads/feat/cloudflare-mvp' }}
-        with:
-          name: validation-toolchain
-          path: /tmp/toolchain.tgz
-          retention-days: 1
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:db
+      - run: npm run build
+      - run: npm run test:runtime
