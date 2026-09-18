@@ -6,6 +6,7 @@ import { enqueue, claim } from '../src/tasks.ts';
 import { checkpoint, storeItem } from '../src/db.ts';
 import { baseRule } from '../src/core.ts';
 import { analysisQuestions } from '../src/providers.ts';
+import { validateItem } from '../src/sources.ts';
 test('new item IDs are recorded before the scan cursor advances',async()=>{
   const e=makeEnv();e.env.SYNC_ENABLED='true';let max=100;const oldFetch=globalThis.fetch;
   globalThis.fetch=(async(input:any)=>{const path=new URL(String(input)).pathname;if(path.endsWith('/maxitem.json'))return Response.json(max);if(path.endsWith('/updates.json'))return Response.json({items:[]});return Response.json([100,99]);}) as typeof fetch;
@@ -30,6 +31,12 @@ test('inline HN text is analyzed once and shared by seven feeds',async()=>{
     const job=e.sqlite.prepare("SELECT * FROM jobs WHERE kind='analysis'").get() as any;await handleJob(e.env,job);await handleJob(e.env,job);assert.equal(calls,1);
     await handleJob(e.env,{id:'pub',kind:'publish',payload:'{}',attempts:1,lease_token:'test'});
     assert.equal(e.sqlite.prepare('SELECT count(*) n FROM feed_heads').get()!.n,7);assert.equal(e.objects.size,8);
+    // Deleted HN records may be only { id, deleted }, without a type field.
+    const tombstone=validateItem({id:101,deleted:true},101);assert.equal(tombstone?.deleted,true);
+    globalThis.fetch=(async()=>Response.json({id:101,deleted:true})) as typeof fetch;
+    await handleJob(e.env,{id:'delete',kind:'item',payload:'{"id":101}',attempts:1,lease_token:'test'});
+    const deleted=e.sqlite.prepare('SELECT deleted,text_html,title FROM hn_items WHERE id=101').get()!;
+    assert.equal(deleted.deleted,1);assert.equal(deleted.text_html,'');assert.equal(deleted.title,null);
   }finally{globalThis.fetch=oldFetch;}
 });
 test('disabled model leaves task pending, not a fabricated zero-score analysis',async()=>{const e=makeEnv();await e.env.CONTENT.put('documents/hash.txt','test content');const id=await enqueue(e.env,'analysis','hash',{hash:'hash',key:'documents/hash.txt',title:'test',scope:'extracted'});let ack=false;await consume(e.env,{messages:[{body:{id},ack(){ack=true;},retry(){}}]} as any);assert.equal(ack,true);assert.equal(e.sqlite.prepare('SELECT status FROM jobs').get()!.status,'pending');assert.equal(e.sqlite.prepare('SELECT count(*) n FROM analyses').get()!.n,0);});

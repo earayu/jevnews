@@ -14,8 +14,10 @@ export async function hn<T>(path:string,fetcher:typeof fetch=fetch):Promise<T>{
   const r=await fetcher(HN+path+'.json',{signal:AbortSignal.timeout(12000)});if(!r.ok)throw new Error(`hn_http_${r.status}`);return JSON.parse(await limitedText(r,1000000)) as T;
 }
 export function validateItem(value:unknown,id:number):Item|null{
-  if(value===null)return null;const v=value as Item;if(!v||v.id!==id||typeof v.type!=='string')throw new Error('invalid_hn_item');
-  return {...v,title:typeof v.title==='string'?v.title.slice(0,1000):'',text:typeof v.text==='string'?v.text.slice(0,200000):'',kids:Array.isArray(v.kids)?v.kids.filter(n=>Number.isSafeInteger(n)&&n>0):[]};
+  if(value===null)return null;const v=value as Item;
+  // HN deletion tombstones may omit type and every content field.
+  if(!v||v.id!==id||(typeof v.type!=='string'&&v.deleted!==true))throw new Error('invalid_hn_item');
+  return {...v,type:typeof v.type==='string'?v.type:'unknown',title:typeof v.title==='string'?v.title.slice(0,1000):'',text:typeof v.text==='string'?v.text.slice(0,200000):'',kids:Array.isArray(v.kids)?v.kids.filter(n=>Number.isSafeInteger(n)&&n>0):[]};
 }
 export async function verifyDNS(host:string,fetcher:typeof fetch=fetch){
   const answers=await Promise.all(['A','AAAA'].map(async type=>{
