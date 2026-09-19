@@ -10,7 +10,10 @@ export async function syncTick(env:Env){
   if(env.SYNC_ENABLED!=='true')return;
   const now=Date.now(),minute=Math.floor(now/60000);
   if(env.ANALYSIS_ENABLED==='true'){
-    await env.DB.prepare("UPDATE jobs SET not_before=0,dispatched_at=0 WHERE kind='analysis' AND status='pending' AND error='jev_not_configured'").run();
+    if(await checkpoint(env,'analysis_wakeup')!=='workers-ai-v1'){
+      await env.DB.prepare("UPDATE jobs SET not_before=0,dispatched_at=0 WHERE kind='analysis' AND status='pending' AND error='jev_not_configured'").run();
+      await putCheckpoint(env,'analysis_wakeup','workers-ai-v1');
+    }
   }
   const [latest,maxId,updates]=await Promise.all([hn<number[]>('newstories'),hn<number>('maxitem'),hn<{items?:number[]}>('updates')]);
   if(!Array.isArray(latest)||!Number.isSafeInteger(maxId))throw new Error('invalid_hn_index');
@@ -20,7 +23,7 @@ export async function syncTick(env:Env){
   // Persist every scanned ID's job BEFORE advancing the discovery cursor.
   for(let id=cursor+1;id<=end;id++)await enqueue(env,'item',`${id}:discover`,{id});
   await putCheckpoint(env,'scan_cursor',String(end));await putCheckpoint(env,'observed_max',String(maxId));
-  const refresh=new Set([...latest.slice(0,initial?500:60),...(updates.items||[]).slice(0,30)]);
+  const refresh=new Set([...latest.slice(0,initial?100:60),...(updates.items||[]).slice(0,30)]);
   for(const id of refresh)if(Number.isSafeInteger(id)&&id>0)await enqueue(env,'item',`${id}:${Math.floor(now/120000)}`,{id});
   const lists=['newstories','topstories',...(minute%5===0?['askstories','showstories','beststories']:[]),...(minute%10===0?['jobstories']:[])];
   for(const name of lists){
@@ -35,8 +38,8 @@ export async function syncTick(env:Env){
   // Bounded reverse scanning fills the initial window without blocking new submissions.
   const backfill=Number(await checkpoint(env,'backfill_cursor'));
   if(backfill>0&&minute%5===0){
-    for(let id=backfill;id>Math.max(0,backfill-100);id--)await enqueue(env,'item',`${id}:backfill`,{id,backfill:true});
-    await putCheckpoint(env,'backfill_cursor',String(Math.max(0,backfill-100)));
+    for(let id=backfill;id>Math.max(0,backfill-25);id--)await enqueue(env,'item',`${id}:backfill`,{id,backfill:true});
+    await putCheckpoint(env,'backfill_cursor',String(Math.max(0,backfill-25)));
   }
   await enqueue(env,'publish',String(Math.floor(now/600000)),{});
   await putCheckpoint(env,'last_sync',String(now));await dispatch(env);

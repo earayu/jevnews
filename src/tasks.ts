@@ -11,7 +11,10 @@ export async function enqueue(env:Env,kind:string,key:string,payload:unknown,not
 /** D1 is the outbox and recovery ledger. Queue delivery is at least once. */
 export async function dispatch(env:Env){
   const now=Date.now();
-  const rows=await env.DB.prepare(`SELECT id FROM jobs WHERE ((status='pending' AND not_before<=?) OR (status='running' AND lease_until<?)) AND dispatched_at<? ORDER BY created_at LIMIT 40`).bind(now,now,now-600000).all<{id:string}>();
+  // Keep the free Queue tier from being consumed by duplicate sends while a
+  // slow consumer is still working through the durable outbox.
+  const retryAfter=now-3600000;
+  const rows=await env.DB.prepare(`SELECT id FROM jobs WHERE (status='pending' AND not_before<=? AND (dispatched_at=0 OR dispatched_at<?)) OR (status='running' AND lease_until<? AND dispatched_at<?) ORDER BY created_at LIMIT 10`).bind(now,retryAfter,now,retryAfter).all<{id:string}>();
   for(const r of rows.results){await env.TASKS.send({id:r.id});await env.DB.prepare('UPDATE jobs SET dispatched_at=? WHERE id=?').bind(now,r.id).run();}
 }
 export async function claim(env:Env,id:string):Promise<Job|null>{

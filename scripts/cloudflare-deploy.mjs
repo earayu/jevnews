@@ -139,7 +139,7 @@ export function deploymentConfig(base, config, resources) {
   // Initial publication excludes AI unless analysis was explicitly enabled.
   if (!config.enableAnalysis) delete output.ai;
   Object.assign(output.vars, {
-    APP_ENV: 'production', SYNC_ENABLED: String(config.enableSync),
+    APP_ENV: 'production', SYNC_INTERVAL_MS: '300000', SYNC_ENABLED: String(config.enableSync),
     ANALYSIS_ENABLED: String(config.enableAnalysis === true), ANALYSIS_PROVIDER: 'workers-ai',
     DAILY_ANALYSIS_CALLS: '100', RULE_COMPILATION_ENABLED: 'false', REGISTRATION_OPEN: 'false',
   });
