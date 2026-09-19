@@ -20,11 +20,13 @@ export function settings(env = process.env) {
   if (!/^[a-f0-9]{32}$/i.test(accountId)) throw new Error('CLOUDFLARE_ACCOUNT_ID must be a 32-character account ID, not a zone ID or email.');
   if (env.DEPLOY_ENABLE_SYNC !== undefined && !['true', 'false'].includes(env.DEPLOY_ENABLE_SYNC)) throw new Error('DEPLOY_ENABLE_SYNC must be true or false.');
   if (env.DEPLOY_SKIP_MIGRATIONS !== undefined && !['true', 'false'].includes(env.DEPLOY_SKIP_MIGRATIONS)) throw new Error('DEPLOY_SKIP_MIGRATIONS must be true or false.');
+  if (env.DEPLOY_ENABLE_ANALYSIS !== undefined && !['true', 'false'].includes(env.DEPLOY_ENABLE_ANALYSIS)) throw new Error('DEPLOY_ENABLE_ANALYSIS must be true or false.');
   return {
     token,
     accountId,
     enableSync: env.DEPLOY_ENABLE_SYNC !== 'false',
     skipMigrations: env.DEPLOY_SKIP_MIGRATIONS === 'true',
+    enableAnalysis: env.DEPLOY_ENABLE_ANALYSIS === 'true',
   };
 }
 
@@ -134,11 +136,12 @@ export function deploymentConfig(base, config, resources) {
   output.d1_databases.find(x => x.binding === 'DB').database_id = resources.databaseId;
   // Let the existing account plan set CPU limits. This is NOT a plan upgrade.
   delete output.limits;
-  // Initial publication deliberately excludes AI and public registration.
-  delete output.ai;
+  // Initial publication excludes AI unless analysis was explicitly enabled.
+  if (!config.enableAnalysis) delete output.ai;
   Object.assign(output.vars, {
     APP_ENV: 'production', SYNC_ENABLED: String(config.enableSync),
-    ANALYSIS_ENABLED: 'false', RULE_COMPILATION_ENABLED: 'false', REGISTRATION_OPEN: 'false',
+    ANALYSIS_ENABLED: String(config.enableAnalysis === true), ANALYSIS_PROVIDER: 'workers-ai',
+    DAILY_ANALYSIS_CALLS: '100', RULE_COMPILATION_ENABLED: 'false', REGISTRATION_OPEN: 'false',
   });
   return output;
 }

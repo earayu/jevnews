@@ -10,6 +10,10 @@ on:
         description: 'Skip remote D1 migration checks when the database is already provisioned'
         type: boolean
         default: false
+      enable_analysis:
+        description: 'Enable bounded article analysis through the configured provider'
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths:
@@ -53,5 +57,6 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
           DEPLOY_ENABLE_SYNC: ${{ github.event_name == 'workflow_dispatch' && inputs.enable_sync == false && 'false' || 'true' }}
           DEPLOY_SKIP_MIGRATIONS: ${{ github.event_name == 'workflow_dispatch' && inputs.skip_migrations == true && 'true' || 'false' }}
+          DEPLOY_ENABLE_ANALYSIS: ${{ github.event_name == 'workflow_dispatch' && inputs.enable_analysis == true && 'true' || 'false' }}
           WRANGLER_SEND_METRICS: 'false'
         run: node scripts/cloudflare-deploy.mjs

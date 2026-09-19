@@ -27,6 +27,11 @@ test('migration skip is explicit and strict', () => {
   assert.equal(settings({ CLOUDFLARE_API_TOKEN: auth.token, CLOUDFLARE_ACCOUNT_ID: auth.accountId }).skipMigrations, false);
   assert.throws(() => settings({ CLOUDFLARE_API_TOKEN: auth.token, CLOUDFLARE_ACCOUNT_ID: auth.accountId, DEPLOY_SKIP_MIGRATIONS: 'yes' }));
 });
+test('analysis toggle is explicit and strict', () => {
+  assert.equal(settings({ CLOUDFLARE_API_TOKEN: auth.token, CLOUDFLARE_ACCOUNT_ID: auth.accountId, DEPLOY_ENABLE_ANALYSIS: 'true' }).enableAnalysis, true);
+  assert.equal(settings({ CLOUDFLARE_API_TOKEN: auth.token, CLOUDFLARE_ACCOUNT_ID: auth.accountId }).enableAnalysis, false);
+  assert.throws(() => settings({ CLOUDFLARE_API_TOKEN: auth.token, CLOUDFLARE_ACCOUNT_ID: auth.accountId, DEPLOY_ENABLE_ANALYSIS: 'yes' }));
+});
 test('no unsafe names or custom DNS routes are accepted', () => {
   assert.equal(resourceNames(base).bucket, 'jevnews-content');
   assert.throws(() => resourceNames({ ...base, name: '../other' }));
@@ -127,6 +132,14 @@ test('publication config disables AI and registration without changing checked-i
   assert.equal(output.limits, undefined);
   assert.equal(base.vars.ANALYSIS_ENABLED, 'true');
   assert.ok(!JSON.stringify(output).includes(auth.token));
+});
+test('publication config keeps the AI binding only when analysis is enabled', () => {
+  const disabled = deploymentConfig(base, { ...auth, enableAnalysis: false }, { databaseId });
+  assert.equal(disabled.ai, undefined);
+  const enabled = deploymentConfig(base, { ...auth, enableAnalysis: true }, { databaseId });
+  assert.deepEqual(enabled.ai, base.ai);
+  assert.equal(enabled.vars.ANALYSIS_ENABLED, 'true');
+  assert.equal(enabled.vars.ANALYSIS_PROVIDER, 'workers-ai');
 });
 test('verification checks both health and a database-backed page', async () => {
   const urls = [];

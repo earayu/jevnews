@@ -2,7 +2,8 @@ export interface Env {
   DB: D1Database; CONTENT: R2Bucket; TASKS: Queue<{ id: string }>;
   SYNC: DurableObjectNamespace; ASSETS: Fetcher; AI: Ai;
   APP_ENV: string; SYNC_ENABLED: string; SYNC_INTERVAL_MS: string;
-  ANALYSIS_ENABLED: string; RULE_COMPILATION_ENABLED?: string; REGISTRATION_OPEN: string;
+  ANALYSIS_ENABLED: string; ANALYSIS_PROVIDER?: string; DAILY_ANALYSIS_CALLS?: string;
+  RULE_COMPILATION_ENABLED?: string; REGISTRATION_OPEN: string;
   JEV_MODEL: string; RULE_MODEL: string; DAILY_TOKEN_BUDGET: string;
   DAILY_COMPILE_BUDGET: string; MAX_SCAN_IDS: string; MAX_CANDIDATES: string;
   TURNSTILE_SITE_KEY: string; TURNSTILE_HOSTNAME: string;

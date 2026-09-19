@@ -39,5 +39,14 @@ test('inline HN text is analyzed once and shared by seven feeds',async()=>{
     assert.equal(deleted.deleted,1);assert.equal(deleted.text_html,'');assert.equal(deleted.title,null);
   }finally{globalThis.fetch=oldFetch;}
 });
+test('Workers AI fallback produces a real structured analysis',async()=>{
+  const e=makeEnv();e.env.ANALYSIS_ENABLED='true';e.env.ANALYSIS_PROVIDER='workers-ai';e.env.DAILY_ANALYSIS_CALLS='100';
+  e.env.AI={run:async()=>({response:JSON.stringify({topics:Object.fromEntries(['ai','databases','systems','engineering','security','hardware','science','math','design','products','startups','history','other'].map(topic=>[topic,topic==='databases'?1:0])),kind:'experience',depth:.8,evidence:.7,firsthand:.9,promotion:.1,difficulty:.6})})} as any;
+  await e.env.CONTENT.put('documents/ai.txt','Concrete database recovery report with measured tradeoffs.');
+  const id=await enqueue(e.env,'analysis','workers-ai',{hash:'ai',key:'documents/ai.txt',title:'Database recovery',scope:'extracted'});
+  const job=await claim(e.env,id);await handleJob(e.env,job!);
+  const row=e.sqlite.prepare('SELECT data_json,model FROM analyses').get() as any;
+  assert.equal(row.model,e.env.JEV_MODEL);assert.equal(JSON.parse(row.data_json).model,e.env.RULE_MODEL);assert.equal(JSON.parse(row.data_json).kind,'experience');
+});
 test('disabled model leaves task pending, not a fabricated zero-score analysis',async()=>{const e=makeEnv();await e.env.CONTENT.put('documents/hash.txt','test content');const id=await enqueue(e.env,'analysis','hash',{hash:'hash',key:'documents/hash.txt',title:'test',scope:'extracted'});let ack=false;await consume(e.env,{messages:[{body:{id},ack(){ack=true;},retry(){}}]} as any);assert.equal(ack,true);assert.equal(e.sqlite.prepare('SELECT status FROM jobs').get()!.status,'pending');assert.equal(e.sqlite.prepare('SELECT count(*) n FROM analyses').get()!.n,0);});
 test('private condition tasks require substantive source analysis',async()=>{const e=makeEnv();e.sqlite.exec("INSERT INTO users VALUES('a','alice','hash','recovery',0)");e.sqlite.prepare('INSERT INTO private_rules(id,owner_id,name,prompt,compiled_json,created_at) VALUES(?,?,?,?,?,0)').run('r','a','rule','',JSON.stringify({...baseRule(),semantic:[{question:'supports recovery?',required:true}]}));await storeItem(e.env,{id:1,type:'story',title:'unknown',time:Math.floor(Date.now()/1000)});await handleJob(e.env,{id:'p',kind:'private-feed',payload:JSON.stringify({owner:'a',ruleId:'r'}),attempts:1,lease_token:'test'});assert.equal(e.sqlite.prepare("SELECT count(*) n FROM jobs WHERE kind='evaluate'").get()!.n,0);});

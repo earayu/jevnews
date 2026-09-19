@@ -15,5 +15,5 @@
   "migrations":[{"tag":"v1","new_sqlite_classes":["SyncCoordinator"]}],
   "ai":{"binding":"AI"},
   "triggers":{"crons":["*/5 * * * *","17 3 * * *"]},
-  "vars":{"APP_ENV":"production","SYNC_INTERVAL_MS":"60000","SYNC_ENABLED":"false","ANALYSIS_ENABLED":"false","RULE_COMPILATION_ENABLED":"false","REGISTRATION_OPEN":"true","JEV_MODEL":"jev-1.13.0","RULE_MODEL":"@cf/meta/llama-3.1-8b-instruct","DAILY_TOKEN_BUDGET":"20000000","DAILY_COMPILE_BUDGET":"100","TURNSTILE_SITE_KEY":"","TURNSTILE_HOSTNAME":"","MAX_SCAN_IDS":"100","MAX_CANDIDATES":"10000"}
+  "vars":{"APP_ENV":"production","SYNC_INTERVAL_MS":"60000","SYNC_ENABLED":"false","ANALYSIS_ENABLED":"false","ANALYSIS_PROVIDER":"workers-ai","DAILY_ANALYSIS_CALLS":"100","RULE_COMPILATION_ENABLED":"false","REGISTRATION_OPEN":"true","JEV_MODEL":"jev-1.13.0","RULE_MODEL":"@cf/meta/llama-3.1-8b-instruct","DAILY_TOKEN_BUDGET":"20000000","DAILY_COMPILE_BUDGET":"100","TURNSTILE_SITE_KEY":"","TURNSTILE_HOSTNAME":"","MAX_SCAN_IDS":"100","MAX_CANDIDATES":"10000"}
 }
