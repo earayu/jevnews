@@ -22,6 +22,11 @@ test('synchronization toggle is strict', () => {
   assert.equal(settings({ CLOUDFLARE_API_TOKEN: auth.token, CLOUDFLARE_ACCOUNT_ID: auth.accountId, DEPLOY_ENABLE_SYNC: 'false' }).enableSync, false);
   assert.throws(() => settings({ CLOUDFLARE_API_TOKEN: auth.token, CLOUDFLARE_ACCOUNT_ID: auth.accountId, DEPLOY_ENABLE_SYNC: 'yes' }));
 });
+test('migration skip is explicit and strict', () => {
+  assert.equal(settings({ CLOUDFLARE_API_TOKEN: auth.token, CLOUDFLARE_ACCOUNT_ID: auth.accountId, DEPLOY_SKIP_MIGRATIONS: 'true' }).skipMigrations, true);
+  assert.equal(settings({ CLOUDFLARE_API_TOKEN: auth.token, CLOUDFLARE_ACCOUNT_ID: auth.accountId }).skipMigrations, false);
+  assert.throws(() => settings({ CLOUDFLARE_API_TOKEN: auth.token, CLOUDFLARE_ACCOUNT_ID: auth.accountId, DEPLOY_SKIP_MIGRATIONS: 'yes' }));
+});
 test('no unsafe names or custom DNS routes are accepted', () => {
   assert.equal(resourceNames(base).bucket, 'jevnews-content');
   assert.throws(() => resourceNames({ ...base, name: '../other' }));

@@ -19,7 +19,13 @@ export function settings(env = process.env) {
   if (!token || !accountId) throw new Error('Cloudflare authorization missing. Add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID to repository Actions secrets. No deployment was attempted.');
   if (!/^[a-f0-9]{32}$/i.test(accountId)) throw new Error('CLOUDFLARE_ACCOUNT_ID must be a 32-character account ID, not a zone ID or email.');
   if (env.DEPLOY_ENABLE_SYNC !== undefined && !['true', 'false'].includes(env.DEPLOY_ENABLE_SYNC)) throw new Error('DEPLOY_ENABLE_SYNC must be true or false.');
-  return { token, accountId, enableSync: env.DEPLOY_ENABLE_SYNC !== 'false' };
+  if (env.DEPLOY_SKIP_MIGRATIONS !== undefined && !['true', 'false'].includes(env.DEPLOY_SKIP_MIGRATIONS)) throw new Error('DEPLOY_SKIP_MIGRATIONS must be true or false.');
+  return {
+    token,
+    accountId,
+    enableSync: env.DEPLOY_ENABLE_SYNC !== 'false',
+    skipMigrations: env.DEPLOY_SKIP_MIGRATIONS === 'true',
+  };
 }
 
 export function resourceNames(base) {
@@ -163,7 +169,8 @@ export async function main(env = process.env) {
     stdio: 'inherit', timeout: 300000,
     env: { ...env, CI: 'true', WRANGLER_SEND_METRICS: 'false' },
   });
-  execute(['d1', 'migrations', 'apply', names.database, '--remote', '--config', generated]);
+  if (config.skipMigrations) console.log('Skipping remote D1 migrations by explicit request; the database schema is already provisioned.');
+  else execute(['d1', 'migrations', 'apply', names.database, '--remote', '--config', generated]);
   execute(['deploy', '--config', generated, '--no-x-provision']);
   await verifyPublication(resources.url);
   console.log(`Verified JevNews publication: ${resources.url}`);
