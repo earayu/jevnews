@@ -134,10 +134,10 @@ async function annotated(env:Env,ids:number[]):Promise<Candidate[]>{
     for(const x of r.results)out.set(Number(x.id),{item:rowItem(x),analysis:x.data_json?JSON.parse(String(x.data_json)):null,documentHash:x.content_hash as string});
   }return ids.flatMap(id=>out.has(id)?[out.get(id)!]:[]);
 }
-async function livePublicRows(list:string):Promise<Candidate[]>{
+async function livePublicRows(list:string,page=1):Promise<Candidate[]>{
   const ids=await hn<number[]>(list);
   if(!Array.isArray(ids))throw new Error('invalid_hn_list');
-  const items=await Promise.all(ids.slice(0,30).map(async id=>{
+  const items=await Promise.all(ids.slice((page-1)*30,page*30).map(async id=>{
     try{return validateItem(await hn<unknown>(`item/${id}`),id);}
     catch{return null;}
   }));
@@ -174,9 +174,9 @@ async function listPage(c:Ctx,list?:string){
     }
     if(!await checkpoint(c.env,'last_sync'))notice+=(notice?' ':'')+'No successful HN synchronization yet. An operator must configure and start the data pipeline.';
   }catch(error){
-    if(ruleId||c.req.query('snapshot')||(!raw&&view.startsWith('private:')))throw error;
-    rows=await livePublicRows(list||'newstories');
-    notice+=(notice?' ':'')+'Live Hacker News view while the shared feed is temporarily unavailable.';
+    if(ruleId||(!raw&&view.startsWith('private:'))||(c.req.query('snapshot')&&error instanceof UserError))throw error;
+    rows=await livePublicRows(list||'newstories',page);
+    notice+=(notice?' ':'')+(c.req.query('snapshot')?'Live Hacker News page while the saved snapshot is temporarily unavailable.':'Live Hacker News view while the shared feed is temporarily unavailable.');
   }
   return c.html(layout('JevNews',controls(preset,raw?'hn':'jev',picks)+(ruleId?'<p class="feed-meta">Private rule · <a href="/rules">edit</a></p>':'')+feedBody(rows,feed,url,page,u,c.get('csrf')),u,c.get('csrf'),notice));
 }
