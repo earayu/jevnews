@@ -175,8 +175,13 @@ async function listPage(c:Ctx,list?:string){
     if(!await checkpoint(c.env,'last_sync'))notice+=(notice?' ':'')+'No successful HN synchronization yet. An operator must configure and start the data pipeline.';
   }catch(error){
     if(ruleId||(!raw&&view.startsWith('private:'))||(c.req.query('snapshot')&&error instanceof UserError))throw error;
-    rows=await livePublicRows(list||'newstories',page);
-    notice+=(notice?' ':'')+(c.req.query('snapshot')?'Live Hacker News page while the saved snapshot is temporarily unavailable.':'Live Hacker News view while the shared feed is temporarily unavailable.');
+    try{
+      rows=await livePublicRows(list||'newstories',page);
+      notice+=(notice?' ':'')+(c.req.query('snapshot')?'Live Hacker News page while the saved snapshot is temporarily unavailable.':'Live Hacker News view while the shared feed is temporarily unavailable.');
+    }catch{
+      rows=[];
+      notice+=(notice?' ':'')+'The shared feed and live Hacker News are temporarily unavailable. Please refresh shortly.';
+    }
   }
   return c.html(layout('JevNews',controls(preset,raw?'hn':'jev',picks)+(ruleId?'<p class="feed-meta">Private rule · <a href="/rules">edit</a></p>':'')+feedBody(rows,feed,url,page,u,c.get('csrf')),u,c.get('csrf'),notice));
 }
