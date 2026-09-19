@@ -134,6 +134,15 @@ async function annotated(env:Env,ids:number[]):Promise<Candidate[]>{
     for(const x of r.results)out.set(Number(x.id),{item:rowItem(x),analysis:x.data_json?JSON.parse(String(x.data_json)):null,documentHash:x.content_hash as string});
   }return ids.flatMap(id=>out.has(id)?[out.get(id)!]:[]);
 }
+async function livePublicRows(list:string):Promise<Candidate[]>{
+  const ids=await hn<number[]>(list);
+  if(!Array.isArray(ids))throw new Error('invalid_hn_list');
+  const items=await Promise.all(ids.slice(0,30).map(async id=>{
+    try{return validateItem(await hn<unknown>(`item/${id}`),id);}
+    catch{return null;}
+  }));
+  return items.filter((item):item is NonNullable<typeof item>=>!!item).map(item=>({item,analysis:null}));
+}
 async function listPage(c:Ctx,list?:string){
   const u=c.get('user'),url=new URL(c.req.url);
   let preset=c.req.query('preset')||getCookie(c,'jev_preset')||'balanced';
@@ -151,17 +160,24 @@ async function listPage(c:Ctx,list?:string){
     c.executionCtx.waitUntil(dispatch(c.env));
     if(row.state!=='saved')notice='Showing the last saved rule. A new natural-language draft has not been applied.';
   }
-  const feed=await getFeed(c.env,view,c.req.query('snapshot'),owner);
-  if(c.req.query('snapshot')&&!feed)throw new UserError('This reading snapshot expired or does not belong to this view. Start again from the current list.',410);
-  if(!feed&&!ruleId){await enqueue(c.env,'publish',String(Math.floor(Date.now()/600000)),{});c.executionCtx.waitUntil(dispatch(c.env));}
   const page=boundedInt(c.req.query('page'),1,1,1000),picks=c.req.query('picks')==='1';
-  const ids=(picks?feed?.picks:feed?.ids)||[];
-  let rows=await annotated(c.env,ids.slice((page-1)*30,page*30));
-  if(u){
-    const hidden=await c.env.DB.prepare('SELECT item_id FROM user_item_state WHERE owner_id=? AND hidden=1').bind(u.id).all<{item_id:number}>();
-    const excluded=new Set(hidden.results.map(x=>x.item_id));rows=rows.filter(r=>!excluded.has(r.item.id));
+  let feed=null,rows:Candidate[]=[];
+  try{
+    feed=await getFeed(c.env,view,c.req.query('snapshot'),owner);
+    if(c.req.query('snapshot')&&!feed)throw new UserError('This reading snapshot expired or does not belong to this view. Start again from the current list.',410);
+    if(!feed&&!ruleId){await enqueue(c.env,'publish',String(Math.floor(Date.now()/600000)),{});c.executionCtx.waitUntil(dispatch(c.env));}
+    const ids=(picks?feed?.picks:feed?.ids)||[];
+    rows=await annotated(c.env,ids.slice((page-1)*30,page*30));
+    if(u){
+      const hidden=await c.env.DB.prepare('SELECT item_id FROM user_item_state WHERE owner_id=? AND hidden=1').bind(u.id).all<{item_id:number}>();
+      const excluded=new Set(hidden.results.map(x=>x.item_id));rows=rows.filter(r=>!excluded.has(r.item.id));
+    }
+    if(!await checkpoint(c.env,'last_sync'))notice+=(notice?' ':'')+'No successful HN synchronization yet. An operator must configure and start the data pipeline.';
+  }catch(error){
+    if(ruleId||c.req.query('snapshot')||(!raw&&view.startsWith('private:')))throw error;
+    rows=await livePublicRows(list||'newstories');
+    notice+=(notice?' ':'')+'Live Hacker News view while the shared feed is temporarily unavailable.';
   }
-  if(!await checkpoint(c.env,'last_sync'))notice+=(notice?' ':'')+'No successful HN synchronization yet. An operator must configure and start the data pipeline.';
   return c.html(layout('JevNews',controls(preset,raw?'hn':'jev',picks)+(ruleId?'<p class="feed-meta">Private rule · <a href="/rules">edit</a></p>':'')+feedBody(rows,feed,url,page,u,c.get('csrf')),u,c.get('csrf'),notice));
 }
 app.get('/',c=>listPage(c));
